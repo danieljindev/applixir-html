@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+    <title>Applixir Video Player</title>
+
+</head>
+
+<body style="background-color: #000000">
+
+    <!-- change to allow="autoplay, fullscreen" if you want fullscreen support -->
+    <script type="text/javascript" src="https://cdn.applixir.com/applixir.sdk3.0m.js"></script>
+    <div id="applixir_vanishing_div" hidden>
+        <iframe id="applixir_parent" allow="autoplay"></iframe>
+    </div>
+
+    <script type="application/javascript">
+        // Make sure to test that pageUrl generates the correct URL for your site(s)
+        var pageUrl = window.location.protocol + "//" + window.location.hostname;
+        if (pageUrl.includes("localhost")) {
+            pageUrl = pageUrl + ":" + window.location.port;
+        }
+
+        function adStatusCallback(status) {
+            if (status == "sys-closing") {
+                window.close();
+            }
+            window.opener.postMessage(status, pageUrl);
+            console.log('Ad Status: ' + status);
+        }
+
+        var options;
+        var zwinOpen = true;
+
+        window.addEventListener('visibilitychange', function (evt) {
+            console.log("visibility change: " + JSON.stringify(evt));
+            var v = "visible", h = "hidden",
+                evtMap = {
+                    focus: v, focusin: v, pageshow: v, blur: h, focusout: h, pagehide: h
+                };
+
+            evt = evt || window.event;
+            if (evt.type in evtMap)
+                window.body.className = evtMap[evt.type];
+            else
+                window.body.className = this[hidden] ? "hidden" : "visible";
+        });
+
+        window.addEventListener('beforeunload', function (e) {
+            if (zwinOpen) {
+                window.postMessage("videoNotWatched");
+                window.postMessage("closeApplixirPlayer");
+            }
+            return null;
+        });
+
+        window.addEventListener('message', function initZ2(e) {
+            if (e.origin !== pageUrl) {
+                return;
+            }
+            if (e.data.indexOf("loadOptions") == 0) {
+                options = JSON.parse(e.data.substring("loadOptions=".length));
+                options["adStatusCb"] = adStatusCallback;
+                invokeApplixirVideoUnit(options);
+            } else if (e.data === 'closeApplixirPlayer') {
+                zwinOpen = false;
+                window.removeEventListener('message', initZ2, false);
+            }
+        }, false);
+        window.opener.postMessage('z2-ready', pageUrl);
+    </script>
+
+</body>
+
+</html>
